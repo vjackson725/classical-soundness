@@ -101,6 +101,10 @@ data _≤'_ : Nat → Nat → Set where
   o' : {m n : Nat} → m ≤' n → m ≤' (suc n)
   oz : 0 ≤' 0
 
+≤'-refl : ∀ m → m ≤' m
+≤'-refl zero = oz
+≤'-refl (suc m) = os (≤'-refl m)
+
 -- thin out a vec by a thinning
 vec-thin : ∀ {l} {m n : Nat} {X : Set l} → Vec X n → m ≤' n → Vec X m
 vec-thin (x ∷ xs) (os th) = x ∷ vec-thin xs th
@@ -112,6 +116,10 @@ data _⊑_[_] {l} {X : Set l} : {m n : Nat} → Vec X m → Vec X n → m ≤' n
   ths : {m n : Nat} {xs : Vec X m} {ys : Vec X n} {th : m ≤' n} {x : X} → xs ⊑ ys [ th ]  → (x ∷ xs) ⊑ (x ∷ ys) [ os th ]
   th' : {m n : Nat} {xs : Vec X m} {ys : Vec X n} {th : m ≤' n} {y : X} → xs ⊑ ys [ th ]  → xs ⊑ (y ∷ ys) [ o' th ]
   thz : [] ⊑ [] [ oz ]
+
+thid : ∀ {l} {m : Nat} {X : Set l} {xs : Vec X m} → xs ⊑  xs [ ≤'-refl m ]
+thid {xs = (x ∷ xs)} = ths (thid {xs = xs})
+thid {xs = []} = thz
 
 -- expand an element proof into a bigger vector
 elem-thin : ∀ {l} {m n : Nat} {X : Set l} {x : X} {xs : Vec X m} {ys : Vec X n} {th : m ≤' n} →
@@ -130,7 +138,7 @@ data Prop : Set where
   _∧_ : Prop → Prop → Prop
   _∨_ : Prop → Prop → Prop
   _⊃_ : Prop → Prop → Prop
-  ¬_ : Prop → Prop
+  ¬ₚ_ : Prop → Prop
 
 -- technically a sequent with restricted right side
 -- forgive me for my abuse of syntax
@@ -141,67 +149,68 @@ data _⊢_ : ∀ {n} → Vec Prop n → Prop → Set where
          Elem A Γ →
          --------
          Γ ⊢ A
-  
-  ∧I : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
-  
+
+  ∧I : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
+
        Γ ⊢ A →      Γ ⊢ B →
        ------------------
             Γ ⊢ A ∧ B
 
-  ∧E₁ : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
-  
+  ∧E₁ : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
+
         Γ ⊢ A ∧ B →
         ---------
         Γ ⊢ A
 
-  ∧E₂ : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
-  
+  ∧E₂ : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
+
         Γ ⊢ A ∧ B →
         ---------
         Γ ⊢ B
 
-  ∨I₁ : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
+  ∨I₁ : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
 
         Γ ⊢ A →
         ---------
         Γ ⊢ A ∨ B
 
-  ∨I₂ : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
+  ∨I₂ : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
 
         Γ ⊢ B →
         ---------
         Γ ⊢ A ∨ B
 
-  ∨E : ∀ {n} {Γ : Vec Prop n} → {A B C : Prop} →
+  ∨E : ∀ {n} {Γ : Vec Prop n} {A B C : Prop} →
 
        (A ∷ Γ) ⊢ C →      (B ∷ Γ) ⊢ C →      Γ ⊢ A ∨ B →
        -----------------------------------------------
                             Γ ⊢ C
 
-  ⊃I : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
+  ⊃I : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
 
        (A ∷ Γ) ⊢ B →
        -----------
        Γ ⊢ A ⊃ B
 
-  ⊃E : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
+  ⊃E : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
 
        Γ ⊢ A ⊃ B →       Γ ⊢ A →
        -----------------------
                 Γ ⊢ B
 
-  RAA : ∀ {n} {Γ : Vec Prop n} → {A B : Prop} →
+  RAA : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
 
-        (B ∷ Γ) ⊢ A →          (B ∷ Γ) ⊢ ¬ A →
+        (B ∷ Γ) ⊢ A →          (B ∷ Γ) ⊢ ¬ₚ A →
         ------------------------------------
-                      Γ ⊢ ¬ B
+                      Γ ⊢ ¬ₚ B
 
-  DNE : ∀ {n} {Γ : Vec Prop n} → {A : Prop} →
+  DNE : ∀ {n} {Γ : Vec Prop n} {A : Prop} →
 
-        Γ ⊢ ¬ (¬ A) →
+        Γ ⊢ ¬ₚ (¬ₚ A) →
         -----------
         Γ ⊢ A
 
+-- a powerful version of weakening
 thin : {m n : Nat} {Γ : Vec Prop m} {Δ : Vec Prop n} {A : Prop} → {th : m ≤' n} →
 
        Γ ⊢ A →      Γ ⊑ Δ [ th ] →
@@ -220,6 +229,28 @@ thin (DNE sq) th = DNE (thin sq th)
 thin (∨E sq₁ sq₂ sq₃) th = ∨E (thin sq₁ (ths th)) (thin sq₂ (ths th)) (thin sq₃ th)
 thin (⊃I sq) th = ⊃I (thin sq (ths th))
 thin (RAA sq₁ sq₂) th = RAA (thin sq₁ (ths th)) (thin sq₂ (ths th))
+
+
+-- we get cut elimination for free!
+-- (to be fair, our representation of the antecedent is exceptionally powerful)
+cut : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
+
+        Γ ⊢ A →     (A ∷ Γ) ⊢ B →
+        -------------------------
+        Γ ⊢ B
+
+cut (prem x) s₂ = ∨E s₂ s₂ (∨I₁ (prem x))
+cut (∧I s₁ s₃) s₂ = ∨E s₂ s₂ (∨I₁ (∧I s₁ s₃))
+cut (∧E₁ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∧E₁ s₁))
+cut (∧E₂ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∧E₂ s₁))
+cut (∨I₁ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∨I₁ s₁))
+cut (∨I₂ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∨I₂ s₁))
+cut (∨E s₁ s₃ s₄) s₂ with cut s₃ (thin s₂ (ths (th' thid))) | cut s₁ (thin s₂ (ths (th' thid)))
+... | a₁Γ⊢A | b₁Γ⊢A = ∨E b₁Γ⊢A a₁Γ⊢A s₄
+cut (⊃I s₁) s₂ = ∨E s₂ s₂ (∨I₁ (⊃I s₁))
+cut (⊃E s₁ s₃) s₂ = ∨E s₂ s₂ (∨I₁ (⊃E s₁ s₃))
+cut (RAA s₁ s₃) s₂ = ∨E s₂ s₂ (∨I₁ (RAA s₁ s₃))
+cut (DNE s₁) s₂ = ∨E s₂ s₂ (∨I₁ (DNE s₁))
 
 -- Assoc
 
@@ -323,25 +354,30 @@ thin (RAA sq₁ sq₂) th = RAA (thin sq₁ (ths th)) (thin sq₂ (ths th))
 
 -- lem
 
-lem : ∀ {A} → [] ⊢ A ∨ (¬ A)
-lem {A} = DNE (RAA {A = (¬ A)}
-                (RAA {A = A ∨ (¬ A)}
+lem : ∀ {A} → [] ⊢ A ∨ (¬ₚ A)
+lem {A} = DNE (RAA {A = (¬ₚ A)}
+                (RAA {A = A ∨ (¬ₚ A)}
                   (∨I₁ (prem here))
                   (prem (there here)))
-                (RAA {A = A ∨ (¬ A)}
+                (RAA {A = A ∨ (¬ₚ A)}
                   (∨I₂ (prem here))
                   (prem (there here))))
 
 -- ex falso
 
-ex-falso : ∀ {A B} → (A ∷ [ ¬ A ]) ⊢ B
+ex-falso : ∀ {A B} → (A ∷ [ ¬ₚ A ]) ⊢ B
 ex-falso = DNE (RAA
                  (prem (there here))
                  (prem (there (there here))))
 
 --
 
-∨-restrict : ∀ {A B} → (¬ A ∷ A ∨ B ∷ []) ⊢ B
+dni : ∀ {A} → [ A ] ⊢ ¬ₚ (¬ₚ A)
+dni = RAA
+        (prem (there here))
+        (prem here)
+
+∨-restrict : ∀ {A B} → (¬ₚ A ∷ A ∨ B ∷ []) ⊢ B
 ∨-restrict = ∨E
                (thin ex-falso (ths (ths (th' thz))))
                (prem here)
@@ -349,32 +385,83 @@ ex-falso = DNE (RAA
 
 -- modus tollens
 
-modus-tollens : ∀ {A B} → (¬ B ∷ A ⊃ B ∷ []) ⊢ ¬ A
+modus-tollens : ∀ {A B} → (¬ₚ B ∷ A ⊃ B ∷ []) ⊢ ¬ₚ A
 modus-tollens = RAA
                   (⊃E (prem (there (there here))) (prem here))
                   (prem (there here))
 
 -- ⊃-∨ rules
 
-⊃-to-∨ : ∀ {A B} → [ A ⊃ B ] ⊢ (¬ A) ∨ B
+⊃-to-∨ : ∀ {A B} → [ A ⊃ B ] ⊢ (¬ₚ A) ∨ B
 ⊃-to-∨ {A} {B} = DNE (RAA {A = A}
-                   (DNE (RAA {A = (¬ A) ∨ B}
+                   (DNE (RAA {A = (¬ₚ A) ∨ B}
                           (∨I₁ (prem here))
                           (prem (there here))))
-                   (DNE (RAA {A = (¬ A) ∨ B}
+                   (DNE (RAA {A = (¬ₚ A) ∨ B}
                           (∨I₂ (⊃E
                                  (prem (there (there here)))
                                  (DNE (prem here))))
                           (prem (there here)))))
 
-
-∨-to-⊃ : ∀ {A B} → [ (¬ A) ∨ B ] ⊢ A ⊃ B
+∨-to-⊃ : ∀ {A B} → [ (¬ₚ A) ∨ B ] ⊢ A ⊃ B
 ∨-to-⊃ {A} {B} = ⊃I (DNE (RAA {A = A}
                            (prem (there here))
                            (∨E
                              (prem here)
                              (thin ex-falso (ths (ths (th' (th' thz)))))
                              (prem (there (there here))))))
+
+-- de-morgan
+
+de-morgan1 : ∀ {A B} → [ ¬ₚ (A ∨ B) ] ⊢ (¬ₚ A) ∧ (¬ₚ B)
+de-morgan1 {A} {B} = ∧I
+                       (RAA {A = A ∨ B}
+                         (∨I₁ (prem here))
+                         (prem (there here)))
+                       (RAA {A = A ∨ B}
+                         (∨I₂ (prem here))
+                         (prem (there here)))
+
+de-morgan2 : ∀ {A B} → [ (¬ₚ A) ∧ (¬ₚ B) ] ⊢ ¬ₚ (A ∨ B)
+de-morgan2 {A} {B} = RAA {A = (¬ₚ A) ∧ (¬ₚ B)}
+                        (prem (there here))
+                        (∨E
+                          (RAA {A = A}
+                            (prem (there here))
+                            (∧E₁ (prem here)))
+                          (RAA {A = B}
+                            (prem (there here))
+                            (∧E₂ (prem here)))
+                          (prem here))
+
+-- A classical rule
+de-morgan3 : ∀ {A B} → [ ¬ₚ (A ∧ B) ] ⊢ (¬ₚ A) ∨ (¬ₚ B)
+de-morgan3 {A} {B} = DNE
+                       (RAA {A = A ∧ B}
+                          (∧I
+                            (DNE
+                              (RAA {A = (¬ₚ A) ∨ (¬ₚ B)}
+                                (∨I₁ (prem here))
+                                (prem (there here))))
+                            (DNE
+                              (RAA {A = (¬ₚ A) ∨ (¬ₚ B)}
+                                (∨I₂ (prem here))
+                                (prem (there here)))))
+                          (prem (there here)))
+
+de-morgan4 : ∀ {A B} → [ (¬ₚ A) ∨ (¬ₚ B) ] ⊢ ¬ₚ (A ∧ B)
+de-morgan4 {A} {B} = ∨E
+                       (RAA {A = A}
+                         (∧E₁ (prem here))
+                         (prem (there here)))
+                       (RAA {A = B}
+                         (∧E₂ (prem here))
+                         (prem (there here)))
+                       (prem here)
+
+
+
+
 
 -- Semantic Interpretation into the booleans
 
@@ -383,7 +470,7 @@ modus-tollens = RAA
 ⟦ p ∧ q ⟧𝒷 = λ f → ⟦ p ⟧𝒷 f ∩ ⟦ q ⟧𝒷 f
 ⟦ p ∨ q ⟧𝒷 = λ f → ⟦ p ⟧𝒷 f ∪ ⟦ q ⟧𝒷 f
 ⟦ p ⊃ q ⟧𝒷 = λ f → ⟦ p ⟧𝒷 f ⇒ ⟦ q ⟧𝒷 f
-⟦ ¬ p ⟧𝒷   = λ f → ~ (⟦ p ⟧𝒷 f)
+⟦ ¬ₚ p ⟧𝒷   = λ f → ~ (⟦ p ⟧𝒷 f)
 
 
 _⊨_ : {n : Nat} → Vec Prop n → Prop → Set
@@ -419,3 +506,16 @@ sysL-sound (RAA {A = A} {B} sq₁ sq₂) f p | inl b-tt | .true | refl | ()
 sysL-sound (RAA {A = A} {B} sq₁ sq₂) f p | inr b-ff rewrite b-ff = refl
 sysL-sound (DNE {A = A} sq) f p with sysL-sound sq f p
 sysL-sound (DNE {A = A} sq) f p | a-tt rewrite ~~-elim {⟦ A ⟧𝒷 f} = a-tt
+
+data Zero : Set where
+
+¬_ : ∀ {a} → Set a → Set a
+¬ A = A → Zero
+
+{-
+  sysL-complete : ∀ {n} {Γ : Vec Prop n} {A : Prop} → Γ ⊨ A → Γ ⊢ A
+  sysL-complete m = {!!}
+-}
+
+sysL-complete-contra : ∀ {n} {Γ : Vec Prop n} {A : Prop} → ¬ (Γ ⊢ A) → ¬ (Γ ⊨ A)
+sysL-complete-contra seq⊥ m = {!!}

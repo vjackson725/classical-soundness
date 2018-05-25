@@ -135,10 +135,8 @@ elem-thin () thz
 
 data Prop : Set where
   var : Nat → Prop
-  _∧_ : Prop → Prop → Prop
-  _∨_ : Prop → Prop → Prop
-  _⊃_ : Prop → Prop → Prop
   ¬ₚ_ : Prop → Prop
+  _⊃_ _∧_ _∨_ : Prop → Prop → Prop
 
 -- technically a sequent with restricted right side
 -- forgive me for my abuse of syntax
@@ -231,26 +229,24 @@ thin (⊃I sq) th = ⊃I (thin sq (ths th))
 thin (RAA sq₁ sq₂) th = RAA (thin sq₁ (ths th)) (thin sq₂ (ths th))
 
 
--- we get cut elimination for free!
--- (to be fair, our representation of the antecedent is exceptionally powerful)
+-- we get cut elimination for (basically) free, because of how ∨E is stated!
 cut : ∀ {n} {Γ : Vec Prop n} {A B : Prop} →
 
         Γ ⊢ A →     (A ∷ Γ) ⊢ B →
         -------------------------
         Γ ⊢ B
 
-cut (prem x) s₂ = ∨E s₂ s₂ (∨I₁ (prem x))
-cut (∧I s₁ s₃) s₂ = ∨E s₂ s₂ (∨I₁ (∧I s₁ s₃))
-cut (∧E₁ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∧E₁ s₁))
-cut (∧E₂ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∧E₂ s₁))
-cut (∨I₁ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∨I₁ s₁))
-cut (∨I₂ s₁) s₂ = ∨E s₂ s₂ (∨I₁ (∨I₂ s₁))
-cut (∨E s₁ s₃ s₄) s₂ with cut s₃ (thin s₂ (ths (th' thid))) | cut s₁ (thin s₂ (ths (th' thid)))
-... | a₁Γ⊢A | b₁Γ⊢A = ∨E b₁Γ⊢A a₁Γ⊢A s₄
-cut (⊃I s₁) s₂ = ∨E s₂ s₂ (∨I₁ (⊃I s₁))
-cut (⊃E s₁ s₃) s₂ = ∨E s₂ s₂ (∨I₁ (⊃E s₁ s₃))
-cut (RAA s₁ s₃) s₂ = ∨E s₂ s₂ (∨I₁ (RAA s₁ s₃))
-cut (DNE s₁) s₂ = ∨E s₂ s₂ (∨I₁ (DNE s₁))
+cut p s₂ = ∨E s₂ s₂ (∨I₁ p)
+
+
+consq-mirabilis : ∀ {n} {Γ : Vec Prop n} {A : Prop} →
+
+  A ∷ Γ ⊢ ¬ₚ A →
+  ---------------
+  Γ ⊢ ¬ₚ A
+
+consq-mirabilis {A = A} s = RAA {A = A} (prem here) s
+
 
 -- Assoc
 
@@ -459,8 +455,24 @@ de-morgan4 {A} {B} = ∨E
                          (prem (there here)))
                        (prem here)
 
+-- Currying
 
+curry : ∀ {A B C} → [ (A ∧ B) ⊃ C ] ⊢ A ⊃ (B ⊃ C)
+curry = ⊃I
+          (⊃I
+            (⊃E
+              (prem (there (there here)))
+              (∧I
+                (prem (there here))
+                (prem here))))
 
+uncurry : ∀ {A B C} → [ A ⊃ (B ⊃ C) ] ⊢ (A ∧ B) ⊃ C
+uncurry = ⊃I
+            (⊃E
+              (⊃E
+                (prem (there here))
+                (∧E₁ (prem here)))
+              (∧E₂ (prem here)))
 
 
 -- Semantic Interpretation into the booleans
@@ -519,3 +531,4 @@ data Zero : Set where
 
 sysL-complete-contra : ∀ {n} {Γ : Vec Prop n} {A : Prop} → ¬ (Γ ⊢ A) → ¬ (Γ ⊨ A)
 sysL-complete-contra seq⊥ m = {!!}
+
